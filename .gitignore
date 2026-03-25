@@ -1,1 +1,13 @@
 .env
+.idea/
+
+# Test data
+test_data/
+
+# OS specific
+.DS_Store
+
+# IDE specific.idea/
+.vscode/
+*.swp
+*.swo
