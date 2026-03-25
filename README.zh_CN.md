@@ -1,16 +1,14 @@
-# Overview
+# 关于 HiAgent-SDK
 
-English | [中文README](README.zh_CN.md)
+[English](README.md) | 中文README
 
-HiAgent-SDK is the SDK of the HiAgent product from Volcano Engine. Developers can use this SDK to quickly develop
-functions and improve development efficiency. HiAgent-SDK provides a complete AI native application development suite,
-including a rich set of development components and application example code.
+HiAgent-SDK是火山引擎的HiAgent产品的SDK，开发者可使用该SDK，快捷的开发功能，提升开发效率。HiAgent-SDK提供了完整的AI原生应用开发套件，包括丰富的开发组件和应用示例代码。
 
-## Architecture
+## 架构
 
 ![img.png](img.png)
 
-## Quick Start
+## 快速开始
 
 ```go
 package main
@@ -47,28 +45,28 @@ func calculateSHA256(filePath string) (string, error) {
 func main() {
 	ctx := context.Background()
 
-	// Get credentials from environment
+	// 从环境变量获取凭证
 	ak := os.Getenv("VOLC_ACCESSKEY")
 	sk := os.Getenv("VOLC_SECRETKEY")
 	uploadEndpoint := os.Getenv("HIAGENT_UP_UPLOAD_ENDPOINT")
 
-	// Create upload client
+	// 创建上传客户端
 	client := up.New(uploadEndpoint, ak, sk)
 
-	// 1. Open file to upload
+	// 1. 打开要上传的文件
 	testFile, err := os.Open("example.txt")
 	if err != nil {
 		log.Fatalf("Failed to open file: %v", err)
 	}
 	defer testFile.Close()
 
-	// Calculate file hash
+	// 计算文件哈希
 	fileHash, err := calculateSHA256("example.txt")
 	if err != nil {
 		log.Fatalf("Failed to calculate SHA256: %v", err)
 	}
 
-	// 2. Upload file
+	// 2. 上传文件
 	uploadReq := up.UploadRawRequest{
 		ID:          strings.ReplaceAll(uuid.New().String(), "-", ""),
 		ContentType: "text/plain",
@@ -80,22 +78,22 @@ func main() {
 	if err != nil {
 		log.Fatalf("Upload failed: %v", err)
 	}
-	fmt.Printf("Upload successful. Path: %s, Size: %d\n", uploadResp.Path, uploadResp.Size)
+	fmt.Printf("上传成功。路径: %s, 大小: %d\n", uploadResp.Path, uploadResp.Size)
 
-	// 3. Get download key
+	// 3. 获取下载密钥
 	downloadKeyResp, err := client.DownloadKey(ctx, uploadResp.Path)
 	if err != nil {
 		log.Fatalf("Get download key failed: %v", err)
 	}
-	fmt.Printf("Download key obtained: %s\n", downloadKeyResp.Key)
+	fmt.Printf("下载密钥: %s\n", downloadKeyResp.Key)
 
-	// 4. Download file
+	// 4. 下载文件
 	downloadBody, err := client.Download(ctx, uploadResp.Path, downloadKeyResp.Key)
 	if err != nil {
 		log.Fatalf("Download failed: %v", err)
 	}
 
-	// Save downloaded file
+	// 保存下载的文件
 	saveFile, err := os.Create("downloaded.txt")
 	if err != nil {
 		log.Fatalf("Failed to create save file: %v", err)
@@ -106,9 +104,9 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to save downloaded file: %v", err)
 	}
-	fmt.Println("File downloaded successfully to downloaded.txt")
+	fmt.Println("文件下载成功，保存至 downloaded.txt")
 
-	// 5. Delete file
+	// 5. 删除文件
 	deleteReq := up.DeleteRequest{
 		ID:     uploadReq.ID,
 		Sha256: fileHash,
@@ -118,18 +116,10 @@ func main() {
 	if err != nil {
 		log.Fatalf("Delete failed: %v", err)
 	}
-	fmt.Println("File deleted successfully")
+	fmt.Println("文件删除成功")
 }
 ```
 
-## Security
-
-If you discover a potential security issue in this project, or think you may
-have discovered a security issue, we ask that you notify Bytedance Security via
-our [security center](https://security.bytedance.com/src) or [vulnerability reporting email](sec@bytedance.com).
-
-Please do **not** create a public GitHub issue.
-
 ## License
 
-This project is licensed under the [Apache-2.0 License](LICENSE).
+该项目采用 [Apache-2.0 License](LICENSE) 许可。
