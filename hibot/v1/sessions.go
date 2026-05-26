@@ -2,12 +2,27 @@ package v1
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"errors"
 	"sync"
 
 	"github.com/volcengine/hiagent-go-sdk/hibot/internal/request"
 	"github.com/volcengine/hiagent-go-sdk/hibot/internal/version"
 )
+
+// generateConversationID 生成符合 `^[A-Za-z0-9_-]{1,64}$` 的 ConversationID：
+// 使用 16 字节随机数转 32 位 hex，长度与字符集均严格满足。
+//
+// rand.Read 失败概率极低（仅当系统熵源不可用），失败时返回空串让上层退化
+// 为不携带 ConversationID 的旧行为，保证主流程不被熵源故障拖垮。
+var generateConversationID = func() string {
+	var buf [16]byte
+	if _, err := rand.Read(buf[:]); err != nil {
+		return ""
+	}
+	return hex.EncodeToString(buf[:])
+}
 
 type SessionsService struct {
 	client        *Client
@@ -29,8 +44,7 @@ func (s *SessionsService) New(ctx context.Context, params V1SessionNewParams) (*
 	}
 	// Peer 仅在调用方需要显式指定渠道（飞书 / 企微 等 IM 渠道）或按 user 隔离
 	// 会话（SaaS 多租户嵌入）时才传入。WebChat 主流程没有外部 Channel/Peer
-	// 概念，由 SDK 注入 webchat/system 默认值（PeerID 用 AgentID 兜底），保证
-	// 服务端 SessionKey 唯一确定。
+	// 概念，由 SDK 注入 webchat/system 默认值（PeerID 用 AgentID 兜底）。
 	payload := map[string]any{
 		"Channel":  "webchat",
 		"PeerKind": "system",
@@ -45,6 +59,13 @@ func (s *SessionsService) New(ctx context.Context, params V1SessionNewParams) (*
 		}
 		if params.Peer.PeerID != "" {
 			payload["PeerID"] = params.Peer.PeerID
+		}
+	}
+	// ConversationID 仅在 webchat 渠道由 SDK 自动生成并透传；其它渠道留空，
+	// 这里直接跳过以避免污染请求体。
+	if payload["Channel"] == "webchat" {
+		if cid := generateConversationID(); cid != "" {
+			payload["ConversationID"] = cid
 		}
 	}
 	body["Payload"] = payload
