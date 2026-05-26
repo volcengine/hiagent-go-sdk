@@ -1,0 +1,116 @@
+version: 2
+
+project_name: hibot
+
+# hibot CLI lives in its own Go module under cmd/hibot. Keep every build
+# command rooted there so cobra/viper dependencies stay out of the root SDK.
+
+git:
+  ignore_tags:
+    - "v*"
+    - "hibot/v*"
+
+before:
+  hooks:
+    - bash scripts/release/prepare-cli-module.sh
+
+builds:
+  - id: hibot
+    dir: cmd/hibot
+    main: .
+    binary: hibot
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    ignore:
+      - goos: windows
+        goarch: arm64
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w
+      - -X github.com/volcengine/hiagent-go-sdk/cmd/hibot/internal/cmd.Version={{ .Version }}
+      - -X github.com/volcengine/hiagent-go-sdk/cmd/hibot/internal/cmd.Commit={{ .Commit }}
+      - -X github.com/volcengine/hiagent-go-sdk/cmd/hibot/internal/cmd.BuildDate={{ .Date }}
+
+archives:
+  - id: hibot
+    name_template: "hibot_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    formats: [tar.gz]
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+    files:
+      - LICENSE*
+      - README*
+      - cmd/hibot/README*
+
+checksum:
+  name_template: "checksums.txt"
+  algorithm: sha256
+
+snapshot:
+  version_template: "{{ .Version }}-snapshot-{{ .ShortCommit }}"
+
+changelog:
+  sort: asc
+  use: github
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^chore:"
+      - "Merge pull request"
+      - "Merge branch"
+
+release:
+  github:
+    owner: volcengine
+    name: hiagent-go-sdk
+  draft: false
+  prerelease: auto
+  name_template: "hibot CLI {{ .Version }}"
+  header: |
+    ## hibot CLI {{ .Version }}
+
+    Install via the one-liner:
+
+    ```bash
+    curl -fsSL https://raw.githubusercontent.com/volcengine/hiagent-go-sdk/main/scripts/install.sh | sh
+    ```
+
+    Or via Homebrew:
+
+    ```bash
+    brew install volcengine/tap/hibot
+    ```
+
+    Or via `go install`:
+
+    ```bash
+    go install github.com/volcengine/hiagent-go-sdk/cmd/hibot@cmd/hibot/v{{ .Version }}
+    ```
+
+brews:
+  - name: hibot
+    repository:
+      owner: volcengine
+      name: homebrew-tap
+      branch: main
+    directory: Formula
+    homepage: "https://github.com/volcengine/hiagent-go-sdk"
+    description: "Command-line interface for the Volcengine Hibot Agent platform."
+    license: "Apache-2.0"
+    commit_author:
+      name: hibot-release-bot
+      email: hibot-release-bot@users.noreply.github.com
+    test: |
+      system "#{bin}/hibot", "version"
+    install: |
+      bin.install "hibot"
