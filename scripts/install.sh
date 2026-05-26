@@ -10,6 +10,8 @@
 #   HIBOT_PREFIX    Install prefix (default: /usr/local)
 #   HIBOT_BIN_DIR   Binary destination directory (default: $HIBOT_PREFIX/bin)
 #   HIBOT_REPO      GitHub repo (default: volcengine/hiagent-go-sdk)
+#   HIBOT_REF       Git ref for source fallback when no release exists (default: main)
+#   HIBOT_SOURCE_FALLBACK  Set to 0 to disable source fallback (default: 1)
 #
 set -euo pipefail
 
@@ -17,6 +19,8 @@ REPO="${HIBOT_REPO:-volcengine/hiagent-go-sdk}"
 PREFIX="${HIBOT_PREFIX:-/usr/local}"
 BIN_DIR="${HIBOT_BIN_DIR:-$PREFIX/bin}"
 VERSION="${HIBOT_VERSION:-}"
+REF="${HIBOT_REF:-main}"
+SOURCE_FALLBACK="${HIBOT_SOURCE_FALLBACK:-1}"
 
 err() {
   echo "[hibot-install] error: $*" >&2
@@ -33,6 +37,40 @@ need_cmd() {
 
 urlencode_tag() {
   printf '%s' "$1" | sed 's#/#%2F#g'
+}
+
+install_binary() {
+  src="$1"
+
+  mkdir -p "$BIN_DIR" 2>/dev/null || {
+    info "cannot create $BIN_DIR without sudo; retrying with sudo"
+    sudo mkdir -p "$BIN_DIR"
+  }
+
+  if [ -w "$BIN_DIR" ]; then
+    install -m 0755 "$src" "$BIN_DIR/hibot"
+  else
+    info "$BIN_DIR is not writable; using sudo"
+    sudo install -m 0755 "$src" "$BIN_DIR/hibot"
+  fi
+
+  info "installed: $BIN_DIR/hibot"
+  "$BIN_DIR/hibot" version || true
+
+  case ":$PATH:" in
+    *":$BIN_DIR:"*) ;;
+    *) info "warning: $BIN_DIR is not in your PATH; add it to your shell profile." ;;
+  esac
+}
+
+install_from_source() {
+  need_cmd git
+  need_cmd go
+
+  info "falling back to source build from github.com/$REPO@$REF"
+  git clone --depth=1 --branch "$REF" "https://github.com/$REPO.git" "$TMP/src"
+  (cd "$TMP/src/cmd/hibot" && GOBIN="$TMP/bin" go install .)
+  install_binary "$TMP/bin/hibot"
 }
 
 need_cmd curl
@@ -63,13 +101,22 @@ esac
 if [ -z "$VERSION" ]; then
   info "resolving latest cmd/hibot release tag from github.com/$REPO ..."
   VERSION="$(
-    curl -fsSL "https://api.github.com/repos/$REPO/releases?per_page=100" \
+    curl -fsSL "https://api.github.com/repos/$REPO/releases?per_page=100" 2>/dev/null \
       | grep -E '"tag_name":[[:space:]]*"cmd/hibot/v[^"]+"' \
       | head -n 1 \
       | sed -E 's/.*"tag_name":[[:space:]]*"([^"]+)".*/\1/' \
       || true
   )"
-  [ -n "$VERSION" ] || err "could not determine latest cmd/hibot release"
+  if [ -z "$VERSION" ]; then
+    info "no cmd/hibot release found for github.com/$REPO"
+    if [ "$SOURCE_FALLBACK" != "0" ]; then
+      TMP="$(mktemp -d -t hibot-install.XXXXXX)"
+      trap 'rm -rf "$TMP"' EXIT
+      install_from_source
+      exit 0
+    fi
+    err "could not determine latest cmd/hibot release; publish cmd/hibot/v* first or set HIBOT_SOURCE_FALLBACK=1"
+  fi
 fi
 
 case "$VERSION" in
@@ -119,23 +166,4 @@ else
 fi
 
 tar -xzf "$TMP/$ARCHIVE" -C "$TMP"
-
-mkdir -p "$BIN_DIR" 2>/dev/null || {
-  info "cannot create $BIN_DIR without sudo; retrying with sudo"
-  sudo mkdir -p "$BIN_DIR"
-}
-
-if [ -w "$BIN_DIR" ]; then
-  install -m 0755 "$TMP/hibot" "$BIN_DIR/hibot"
-else
-  info "$BIN_DIR is not writable; using sudo"
-  sudo install -m 0755 "$TMP/hibot" "$BIN_DIR/hibot"
-fi
-
-info "installed: $BIN_DIR/hibot"
-"$BIN_DIR/hibot" version || true
-
-case ":$PATH:" in
-  *":$BIN_DIR:"*) ;;
-  *) info "warning: $BIN_DIR is not in your PATH; add it to your shell profile." ;;
-esac
+install_binary "$TMP/hibot"
