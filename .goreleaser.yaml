@@ -85,32 +85,8 @@ release:
     curl -fsSL https://raw.githubusercontent.com/volcengine/hiagent-go-sdk/main/scripts/install.sh | sh
     ```
 
-    Or via Homebrew:
-
-    ```bash
-    brew install volcengine/tap/hibot
-    ```
-
     Or via `go install`:
 
     ```bash
     go install github.com/volcengine/hiagent-go-sdk/cmd/hibot@cmd/hibot/v{{ .Version }}
     ```
-
-brews:
-  - name: hibot
-    repository:
-      owner: volcengine
-      name: homebrew-tap
-      branch: main
-    directory: Formula
-    homepage: "https://github.com/volcengine/hiagent-go-sdk"
-    description: "Command-line interface for the Volcengine Hibot Agent platform."
-    license: "Apache-2.0"
-    commit_author:
-      name: hibot-release-bot
-      email: hibot-release-bot@users.noreply.github.com
-    test: |
-      system "#{bin}/hibot", "version"
-    install: |
-      bin.install "hibot"
