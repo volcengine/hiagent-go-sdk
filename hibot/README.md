@@ -1,6 +1,6 @@
 # Hibot Go SDK
 
-Hibot 平台的官方 Go SDK，对标 Anthropic Claude [Managed Agents Quickstart](https://platform.claude.com/docs/en/managed-agents/quickstart) 的设计范式，封装了 Hibot 私有化部署下的 Agent / Session / Skill / MCP / Resource 等核心资源，使开发者能够通过类型安全的 Go API 一站式创建托管 Agent 并发起会话。
+Hibot 平台的官方 Go SDK，封装了 Hibot 私有化部署下的 Agent / Session / Skill / MCP / Resource 等核心资源，使开发者能够通过类型安全的 Go API 一站式创建托管 Agent 并发起会话。
 
 > **本 SDK 的一致性原则**：所有可复用资源（Model、Skill、MCP、Resource、Prompt）均由 `client.V1.*` 资源 client 显式创建并持久化；Session 仅引用资源 ID。Agent 一次创建，按 ID 长期复用；不要在请求路径里反复 `Agents.New`。
 
