@@ -93,13 +93,16 @@ func newMCPsGetCmd(v *viper.Viper) *cobra.Command {
 
 func newMCPsCreateCmd(v *viper.Viper) *cobra.Command {
 	var (
-		name        string
-		description string
-		transport   string
-		endpoint    string
-		headers     []string
-		authType    string
-		credName    string
+		name         string
+		description  string
+		transport    string
+		endpoint     string
+		headers      []string
+		authType     string
+		credName     string
+		credKey      string
+		credValue    string
+		credProvider string
 	)
 	cmd := &cobra.Command{
 		Use:   "create",
@@ -130,8 +133,19 @@ func newMCPsCreateCmd(v *viper.Viper) *cobra.Command {
 				Headers:     hdrs,
 				AuthType:    authType,
 			}
-			if credName != "" {
-				params.Credential = &hibot.V1CredentialRefParams{Name: credName}
+			if credName != "" || credValue != "" {
+				cfg := &hibot.V1MCPCredentialInputParams{Name: credName, ProviderType: credProvider}
+				if credValue != "" {
+					if credKey == "" {
+						credKey = "token"
+					}
+					cfg.Secrets = append(cfg.Secrets, hibot.V1CredentialSecretInputParams{
+						KeyName:     credKey,
+						SecretType:  "string",
+						SecretValue: credValue,
+					})
+				}
+				params.CredentialConfig = cfg
 			}
 			m, err := client.V1.MCPs.New(context.Background(), params)
 			if err != nil {
@@ -151,7 +165,10 @@ func newMCPsCreateCmd(v *viper.Viper) *cobra.Command {
 	f.StringVar(&endpoint, "endpoint", "", "Endpoint URL (required)")
 	f.StringArrayVar(&headers, "header", nil, "Header KEY=VALUE (repeatable)")
 	f.StringVar(&authType, "auth-type", "", "Auth type")
-	f.StringVar(&credName, "credential-name", "", "Credential reference name")
+	f.StringVar(&credName, "credential-name", "", "Credential provider name")
+	f.StringVar(&credProvider, "credential-provider-type", "", "Credential provider type (e.g. basic)")
+	f.StringVar(&credKey, "credential-key", "", "Credential secret key name (default token)")
+	f.StringVar(&credValue, "credential-value", "", "Credential secret value (sets SecretValue)")
 	return cmd
 }
 
@@ -176,11 +193,14 @@ func newMCPsDeleteCmd(v *viper.Viper) *cobra.Command {
 
 func newMCPsTestCmd(v *viper.Viper) *cobra.Command {
 	var (
-		transport string
-		endpoint  string
-		headers   []string
-		authType  string
-		credName  string
+		transport    string
+		endpoint     string
+		headers      []string
+		authType     string
+		credName     string
+		credKey      string
+		credValue    string
+		credProvider string
 	)
 	cmd := &cobra.Command{
 		Use:   "test",
@@ -206,8 +226,19 @@ func newMCPsTestCmd(v *viper.Viper) *cobra.Command {
 				Headers:   hdrs,
 				AuthType:  authType,
 			}
-			if credName != "" {
-				params.Credential = &hibot.V1CredentialRefParams{Name: credName}
+			if credName != "" || credValue != "" {
+				cfg := &hibot.V1MCPCredentialInputParams{Name: credName, ProviderType: credProvider}
+				if credValue != "" {
+					if credKey == "" {
+						credKey = "token"
+					}
+					cfg.Secrets = append(cfg.Secrets, hibot.V1CredentialSecretInputParams{
+						KeyName:     credKey,
+						SecretType:  "string",
+						SecretValue: credValue,
+					})
+				}
+				params.CredentialConfig = cfg
 			}
 			result, err := client.V1.MCPs.TestConnection(context.Background(), params)
 			if err != nil {
@@ -224,6 +255,9 @@ func newMCPsTestCmd(v *viper.Viper) *cobra.Command {
 	f.StringVar(&endpoint, "endpoint", "", "Endpoint URL (required)")
 	f.StringArrayVar(&headers, "header", nil, "Header KEY=VALUE (repeatable)")
 	f.StringVar(&authType, "auth-type", "", "Auth type")
-	f.StringVar(&credName, "credential-name", "", "Credential reference name")
+	f.StringVar(&credName, "credential-name", "", "Credential provider name")
+	f.StringVar(&credProvider, "credential-provider-type", "", "Credential provider type (e.g. basic)")
+	f.StringVar(&credKey, "credential-key", "", "Credential secret key name (default token)")
+	f.StringVar(&credValue, "credential-value", "", "Credential secret value (sets SecretValue)")
 	return cmd
 }

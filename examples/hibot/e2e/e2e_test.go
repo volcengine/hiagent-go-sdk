@@ -165,8 +165,12 @@ func TestFullJourney_StreamingAndBatch(t *testing.T) {
 		Name:      "e2e-mcp",
 		Transport: hibot.V1MCPTransportStreamableHTTP,
 		Endpoint:  "http://mcp.local/mcp",
-		Credential: &hibot.V1CredentialRefParams{
-			Name: "e2e-token",
+		CredentialConfig: &hibot.V1MCPCredentialInputParams{
+			Name:         "e2e-token",
+			ProviderType: "basic",
+			Secrets: []hibot.V1CredentialSecretInputParams{
+				{KeyName: "token", SecretType: "string", SecretValue: "test-token"},
+			},
 		},
 	})
 	if err != nil {

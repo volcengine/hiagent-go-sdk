@@ -10,9 +10,10 @@ import (
 )
 
 type scenarioOptions struct {
-	MCPEndpoint    string
-	CredentialName string
-	Input          string
+	MCPEndpoint     string
+	CredentialName  string
+	CredentialToken string
+	Input           string
 }
 
 func main() {
@@ -31,9 +32,10 @@ func run(ctx context.Context) error {
 		return err
 	}
 	return runScenario(ctx, client, scenarioOptions{
-		MCPEndpoint:    endpoint,
-		CredentialName: exampleutil.EnvOrDefault("HIBOT_GITHUB_CREDENTIAL_NAME", "github-token"),
-		Input:          exampleutil.EnvOrDefault("HIBOT_CHAT_INPUT", "请通过 MCP 说明如何查看仓库最近变更。"),
+		MCPEndpoint:     endpoint,
+		CredentialName:  exampleutil.EnvOrDefault("HIBOT_GITHUB_CREDENTIAL_NAME", "github-token"),
+		CredentialToken: exampleutil.EnvOrDefault("HIBOT_GITHUB_TOKEN", ""),
+		Input:           exampleutil.EnvOrDefault("HIBOT_CHAT_INPUT", "请通过 MCP 说明如何查看仓库最近变更。"),
 	})
 }
 
@@ -46,8 +48,12 @@ func runScenario(ctx context.Context, client *hibot.Client, opts scenarioOptions
 		Name:      fmt.Sprintf("github-mcp-%d", time.Now().UnixNano()),
 		Transport: hibot.V1MCPTransportStreamableHTTP,
 		Endpoint:  opts.MCPEndpoint,
-		Credential: &hibot.V1CredentialRefParams{
-			Name: opts.CredentialName,
+		CredentialConfig: &hibot.V1MCPCredentialInputParams{
+			Name:         opts.CredentialName,
+			ProviderType: "basic",
+			Secrets: []hibot.V1CredentialSecretInputParams{
+				{KeyName: "token", SecretType: "string", SecretValue: opts.CredentialToken},
+			},
 		},
 	})
 	if err != nil {

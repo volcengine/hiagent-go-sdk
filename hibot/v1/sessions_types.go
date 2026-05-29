@@ -29,11 +29,16 @@ type V1Message struct {
 	Files      []V1MessageFile `json:"Files,omitempty"`
 }
 
+// V1MessageFile 同时承担两类语义：
+//   - 响应方向：服务端在 V1Message.Files 中返回完整文件元数据（FileID/URI/StoragePath/SizeBytes）
+//   - 请求方向：调用方在 V1SessionChatParams.Files 中传入 Name/ContentType/URL/BlobID
+//     用于把上一步 UploadBlob 得到的 BlobID 或外部 URL 引入到对话上下文。
 type V1MessageFile struct {
 	FileID      string `json:"FileID,omitempty"`
 	Name        string `json:"Name,omitempty"`
 	ContentType string `json:"ContentType,omitempty"`
 	URL         string `json:"URL,omitempty"`
+	BlobID      string `json:"BlobID,omitempty"`
 	URI         string `json:"URI,omitempty"`
 	StoragePath string `json:"StoragePath,omitempty"`
 	SizeBytes   int64  `json:"SizeBytes,omitempty"`
@@ -69,10 +74,15 @@ type V1SessionPeerParams struct {
 }
 
 type V1SessionChatParams struct {
-	WorkspaceID     string `json:"WorkspaceID,omitempty"`
-	AgentID         string `json:"AgentID,omitempty"`
-	Input           string `json:"Content,omitempty"`
-	ClientMessageID string `json:"ClientMessageID,omitempty"`
+	WorkspaceID string `json:"WorkspaceID,omitempty"`
+	AgentID     string `json:"AgentID,omitempty"`
+	// Input 即对话内容，对应服务端 ChatRequest.Content。
+	// 允许为空字符串：当 Files 非空时可仅传文件进行对话。
+	Input string `json:"Content,omitempty"`
+	// Files 用于把已上传的 Blob 或外部 URL 引入对话上下文，等价于服务端
+	// ChatRequest.Files；元素仅需填写 Name/ContentType + URL 或 BlobID 之一。
+	Files           []V1MessageFile `json:"Files,omitempty"`
+	ClientMessageID string          `json:"ClientMessageID,omitempty"`
 }
 
 type V1SessionChatEvent struct {

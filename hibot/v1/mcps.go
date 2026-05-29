@@ -98,6 +98,9 @@ func (s *MCPsService) Update(ctx context.Context, params V1MCPUpdateParams) erro
 	if params.AuthType != nil {
 		body["AuthType"] = *params.AuthType
 	}
+	if params.CredentialConfig != nil {
+		body["CredentialConfig"] = params.CredentialConfig
+	}
 	if params.ToolAllowlist != nil {
 		body["ToolAllowlist"] = params.ToolAllowlist
 	}
