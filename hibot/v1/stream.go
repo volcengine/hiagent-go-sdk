@@ -31,7 +31,7 @@ const (
 )
 
 func (s *SessionsService) Chat(ctx context.Context, sessionID string, params V1SessionChatParams) (*V1Message, error) {
-	stream := s.ChatStreaming(ctx, sessionID, params)
+	stream := s.chatStream(ctx, sessionID, params, true)
 	defer stream.Close()
 	for stream.Next() {
 		event := stream.Current()
@@ -46,6 +46,14 @@ func (s *SessionsService) Chat(ctx context.Context, sessionID string, params V1S
 }
 
 func (s *SessionsService) ChatStreaming(ctx context.Context, sessionID string, params V1SessionChatParams) *V1SessionChatStream {
+	return s.chatStream(ctx, sessionID, params, false)
+}
+
+// chatStream 是 Chat / ChatStreaming 的共享底座。
+// autoApproveAll=true 时自动注入 Approve="all"：webchat 非流式聚合调用方
+// 在收到批回复前不需要显式审批；流式订阅方仍可通过 SSE approval_request
+// 事件参与人审。
+func (s *SessionsService) chatStream(ctx context.Context, sessionID string, params V1SessionChatParams, autoApproveAll bool) *V1SessionChatStream {
 	agentID := params.AgentID
 	if agentID == "" {
 		agentID = s.agentIDForSession(sessionID)
@@ -56,8 +64,14 @@ func (s *SessionsService) ChatStreaming(ctx context.Context, sessionID string, p
 		"AgentID":     agentID,
 		"Content":     params.Input,
 	}
+	if len(params.Files) > 0 {
+		body["Files"] = params.Files
+	}
 	if params.ClientMessageID != "" {
 		body["ClientMessageID"] = params.ClientMessageID
+	}
+	if autoApproveAll {
+		body["Approve"] = "all"
 	}
 	stream := &V1SessionChatStream{}
 	resp, err := s.client.requester.DoStream(ctx, request.Action{

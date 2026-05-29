@@ -106,6 +106,9 @@ func (s *SkillsService) Update(ctx context.Context, params V1SkillUpdateParams) 
 	if params.SlugID != nil {
 		body["SlugID"] = *params.SlugID
 	}
+	if params.CredentialConfig != nil {
+		body["CredentialConfig"] = params.CredentialConfig
+	}
 	return s.client.requester.DoAction(ctx, request.Action{
 		Service: s.client.services.Server,
 		Version: version.Server,
